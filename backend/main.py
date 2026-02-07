@@ -27,12 +27,12 @@ class BinInfo(BaseModel):
 # ----------------------------
 
 BIN_REGISTRY: dict[str, dict] = {
-    "bin-01": {"name": "Location A (TODO)", "lat": 0.0, "lng": 0.0},
-    "bin-02": {"name": "Location B (TODO)", "lat": 0.0, "lng": 0.0},
-    "bin-03": {"name": "Location C (TODO)", "lat": 0.0, "lng": 0.0},
-    "bin-04": {"name": "Location D (TODO)", "lat": 0.0, "lng": 0.0},
-    "bin-05": {"name": "Location E (TODO)", "lat": 0.0, "lng": 0.0},
-    "bin-06": {"name": "Location F (TODO)", "lat": 0.0, "lng": 0.0},
+    "bin-01": {"name": "Marston Library",     "lat": 29.6481, "lng": -82.3436},
+    "bin-02": {"name": "Reitz Union",        "lat": 29.6462, "lng": -82.3479},
+    "bin-03": {"name": "Plaza of the Americas", "lat": 29.6510, "lng": -82.3418},
+    "bin-04": {"name": "Ben Hill Griffin Stadium", "lat": 29.6500, "lng": -82.3486},
+    "bin-05": {"name": "Turlington Hall",    "lat": 29.6494, "lng": -82.3428},
+    "bin-06": {"name": "Hub / CSE Building", "lat": 29.6483, "lng": -82.3440},
 }
 
 # ----------------------------

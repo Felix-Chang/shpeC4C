@@ -20,8 +20,8 @@ SAMPLE_DELAY = 0.08  # seconds between samples
 
 # Env-var driven config
 SEND_HTTP = True
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000/telemetry")
-BIN_ID = os.environ.get("BIN_ID", "wpb-bin-01")
+BACKEND_URL = os.environ.get("BACKEND_URL", "https://shpec4c-production.up.railway.app/telemetry")
+BIN_ID = os.environ.get("BIN_ID", "bin-01")
 
 # ----------------------------
 # SETUP SENSOR
