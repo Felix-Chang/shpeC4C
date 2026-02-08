@@ -2,6 +2,7 @@ import certifi
 import math
 import os
 import time
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
@@ -91,6 +92,11 @@ SEED_EMPTIED_HOURS_AGO: dict[str, float] = {
     "bin-06": 24.0,
 }
 
+# Route optimization: penalty points per kilometer of travel
+# Higher values favor geographic proximity, lower values favor fill priority
+# Recommended: 0.5 for campus-scale (0-2km), 0.1 for city-scale (5-10km)
+DISTANCE_PENALTY_PER_KM = 0.5
+
 def _fill_to_distance(fill_pct: float) -> float:
     empty_dist = 60.0
     full_dist = 10.0
@@ -146,7 +152,14 @@ def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
 # APP
 # ----------------------------
 
-app = FastAPI(title="Smart Waste Management API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: seed the database
+    seed_bins()
+    yield
+    # Shutdown: cleanup (if needed)
+
+app = FastAPI(title="Smart Waste Management API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -155,10 +168,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-def on_startup():
-    seed_bins()
 
 # ----------------------------
 # ENDPOINTS
@@ -275,7 +284,7 @@ def get_route(
                 continue
             loc = doc.get("location", {})
             dist_km = haversine_km(cur_lat, cur_lng, loc.get("lat", 0.0), loc.get("lng", 0.0))
-            score = compute_priority(doc) - 0.1 * dist_km
+            score = compute_priority(doc) - DISTANCE_PENALTY_PER_KM * dist_km
             if score > best_score:
                 best_score = score
                 best_bid = bid

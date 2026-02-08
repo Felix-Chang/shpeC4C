@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { APIProvider, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import "./App.css";
-import { fetchBins } from "./api";
-import type { BinInfo } from "./types";
+import { fetchBins, fetchRoute } from "./api";
+import type { BinInfo, RouteOut } from "./types";
 import {
   fillSeverity,
   fillColor,
-  buildOptimizedRoute,
   formatTimestamp,
 } from "./utils";
 import BinMarker from "./BinMarker";
+import RoutePolyline from "./RoutePolyline";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || "";
 const POLL_INTERVAL = 10_000;
@@ -21,7 +21,8 @@ function App() {
   const [selectedBin, setSelectedBin] = useState<string | null>(null);
   const [startBin, setStartBin] = useState("");
   const [endBin, setEndBin] = useState("");
-  const [route, setRoute] = useState<BinInfo[] | null>(null);
+  const [route, setRoute] = useState<RouteOut | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
   const [activeNav, setActiveNav] = useState<"bins" | "route">("bins");
 
   const loadBins = useCallback(async () => {
@@ -59,15 +60,22 @@ function App() {
   const routeOrderMap = useMemo(() => {
     const m = new Map<string, number>();
     if (route) {
-      route.forEach((b, i) => m.set(b.bin_id, i + 1));
+      route.stops.forEach((stop) => m.set(stop.bin_id, stop.order + 1));
     }
     return m;
   }, [route]);
 
-  const handleBuildRoute = () => {
+  const handleBuildRoute = async () => {
     if (!startBin || !endBin) return;
-    const optimized = buildOptimizedRoute(bins, startBin, endBin);
-    setRoute(optimized);
+    setRouteLoading(true);
+    try {
+      const routeData = await fetchRoute(startBin, endBin);
+      setRoute(routeData);
+    } catch (err) {
+      console.error("Failed to fetch route:", err);
+    } finally {
+      setRouteLoading(false);
+    }
   };
 
   const handleClearRoute = () => {
@@ -190,8 +198,8 @@ function App() {
               </div>
             </div>
             <div className="route-actions">
-              <button className="btn-route primary" onClick={handleBuildRoute} disabled={!startBin || !endBin}>
-                Optimize Route
+              <button className="btn-route primary" onClick={handleBuildRoute} disabled={!startBin || !endBin || routeLoading}>
+                {routeLoading ? "Calculating..." : "Optimize Route"}
               </button>
               {route && (
                 <button className="btn-route secondary" onClick={handleClearRoute}>Clear</button>
@@ -200,16 +208,16 @@ function App() {
             {route && (
               <div className="route-info fade-in">
                 <div className="route-info-header">
-                  <strong>{route.length} stops</strong>
-                  <span>Fullest bins first</span>
+                  <strong>{route.stops.length} stops</strong>
+                  <span>Optimized by priority & distance</span>
                 </div>
                 <ul className="route-stop-list">
-                  {route.map((b, i) => (
-                    <li key={b.bin_id}>
-                      <span className="route-stop-number">{i + 1}</span>
-                      <span className="route-stop-name">{b.name}</span>
-                      <span className="route-stop-fill" style={{ color: fillColor(b.fill_percent) }}>
-                        {Math.round(b.fill_percent)}%
+                  {route.stops.map((stop) => (
+                    <li key={stop.bin_id}>
+                      <span className="route-stop-number">{stop.order + 1}</span>
+                      <span className="route-stop-name">{stop.name}</span>
+                      <span className="route-stop-fill" style={{ color: fillColor(stop.fill_percent) }}>
+                        {Math.round(stop.fill_percent)}%
                       </span>
                     </li>
                   ))}
@@ -293,6 +301,16 @@ function App() {
                   onClick={() => setSelectedBin(selectedBin === bin.bin_id ? null : bin.bin_id)}
                 />
               ))}
+
+              {/* Add polyline visualization */}
+              {route && route.polyline.length > 1 && (
+                <RoutePolyline
+                  path={route.polyline.map(([lat, lng]) => ({ lat, lng }))}
+                  strokeColor="#2d6a4f"
+                  strokeOpacity={0.8}
+                  strokeWeight={3}
+                />
+              )}
             </GoogleMap>
           </APIProvider>
         ) : (
