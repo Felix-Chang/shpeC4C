@@ -28,10 +28,11 @@ shpeC4C/
 │   └── requirements.txt
 ├── backend/          FastAPI server
 │   ├── main.py
+│   ├── .env          Configuration file (create this!)
 │   └── requirements.txt
 ├── frontend/         React + TypeScript dashboard
 │   ├── src/
-│   ├── .env.example
+│   ├── .env          Configuration file (create this!)
 │   └── package.json
 └── README.md
 ```
@@ -51,7 +52,7 @@ python main.py
 The server starts on `http://localhost:8000`. Available endpoints:
 
 | Method | Path             | Description                    |
-|--------|------------------|--------------------------------|
+| ------ | ---------------- | ------------------------------ |
 | POST   | `/telemetry`     | Receive a sensor reading       |
 | GET    | `/bins`          | List all bins with latest data |
 | GET    | `/bins/{bin_id}` | Get a single bin               |
@@ -97,12 +98,12 @@ The dashboard will be available at `http://localhost:5173`.
 
 ### Wiring
 
-| HC-SR04 Pin | RPi GPIO         |
-|-------------|------------------|
-| Trig        | GPIO 25          |
-| Echo        | GPIO 24          |
-| VCC         | 5V               |
-| GND         | GND              |
+| HC-SR04 Pin | RPi GPIO |
+| ----------- | -------- |
+| Trig        | GPIO 25  |
+| Echo        | GPIO 24  |
+| VCC         | 5V       |
+| GND         | GND      |
 
 The Echo pin outputs 5V. Use a voltage divider (1k / 2k resistors) to bring it down to 3.3V for the Pi's GPIO input.
 
@@ -125,10 +126,10 @@ BIN_ID=bin-01
 
 **Configuration Options:**
 
-| Variable      | Default                                                    | Description              |
-|---------------|------------------------------------------------------------|--------------------------|
-| `BACKEND_URL` | `https://shpec4c-production.up.railway.app`                | Backend API base URL     |
-| `BIN_ID`      | `bin-01`                                                   | Identifier for this bin  |
+| Variable      | Default                                     | Description             |
+| ------------- | ------------------------------------------- | ----------------------- |
+| `BACKEND_URL` | `https://shpec4c-production.up.railway.app` | Backend API base URL    |
+| `BIN_ID`      | `bin-01`                                    | Identifier for this bin |
 
 > **Note:** For `main.py`, the URL should NOT include `/telemetry` - the script appends it automatically. For local testing, use `BACKEND_URL=http://localhost:8000`.
 
@@ -150,6 +151,7 @@ python admin.py
 ```
 
 Features:
+
 - **List bins** - View all bins with fill levels and status
 - **Add bin** - Register new bins with metadata (name, location)
 - **Delete bin** - Remove bins from the system
