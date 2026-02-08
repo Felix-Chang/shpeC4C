@@ -1,10 +1,29 @@
+import certifi
+import math
+import os
 import time
-from fastapi import FastAPI, HTTPException
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from pymongo import MongoClient
+from typing import Optional
+
+load_dotenv()
 
 # ----------------------------
-# MODELS
+# MONGODB CONNECTION
+# ----------------------------
+
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
+client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
+db = client["wastewise"]
+bins_col = db["bins"]
+telemetry_col = db["telemetry"]
+
+# ----------------------------
+# PYDANTIC MODELS
 # ----------------------------
 
 class TelemetryIn(BaseModel):
@@ -13,7 +32,7 @@ class TelemetryIn(BaseModel):
     fill_percent: float
     ts: float
 
-class BinInfo(BaseModel):
+class BinOut(BaseModel):
     bin_id: str
     name: str
     lat: float
@@ -21,59 +40,107 @@ class BinInfo(BaseModel):
     distance_cm: float
     fill_percent: float
     ts: float
+    last_emptied_at: Optional[float] = None
+
+class HeatmapPoint(BaseModel):
+    lat: float
+    lng: float
+    weight: float
+
+class RouteStop(BaseModel):
+    bin_id: str
+    name: str
+    lat: float
+    lng: float
+    fill_percent: float
+    priority: float
+    order: int
+
+class RouteOut(BaseModel):
+    stops: list[RouteStop]
+    polyline: list[list[float]]
 
 # ----------------------------
-# STATIC REGISTRY  (TODO: fill in real names + coordinates)
+# SEED DATA
 # ----------------------------
 
 BIN_REGISTRY: dict[str, dict] = {
-    "bin-01": {"name": "Marston Library",     "lat": 29.6481, "lng": -82.3436},
-    "bin-02": {"name": "Reitz Union",        "lat": 29.6462, "lng": -82.3479},
-    "bin-03": {"name": "Plaza of the Americas", "lat": 29.6510, "lng": -82.3418},
-    "bin-04": {"name": "Ben Hill Griffin Stadium", "lat": 29.6500, "lng": -82.3486},
-    "bin-05": {"name": "Turlington Hall",    "lat": 29.6494, "lng": -82.3428},
-    "bin-06": {"name": "Hub / CSE Building", "lat": 29.6483, "lng": -82.3440},
+    "bin-01": {"name": "Marston Library",          "lat": 29.6481, "lng": -82.3436},
+    "bin-02": {"name": "Reitz Union",              "lat": 29.6462, "lng": -82.3479},
+    "bin-03": {"name": "Plaza of the Americas",    "lat": 29.6510, "lng": -82.3418},
+    "bin-04": {"name": "Ben Hill Griffin Stadium",  "lat": 29.6500, "lng": -82.3486},
+    "bin-05": {"name": "Turlington Hall",          "lat": 29.6494, "lng": -82.3428},
+    "bin-06": {"name": "Hub / CSE Building",       "lat": 29.6483, "lng": -82.3440},
 }
 
-# ----------------------------
-# IN-MEMORY TELEMETRY STORE + SEED DATA
-# ----------------------------
+SEED_FILLS: dict[str, float] = {
+    "bin-01": 15.0,
+    "bin-02": 42.0,
+    "bin-03": 78.0,
+    "bin-04": 91.0,
+    "bin-05": 5.0,
+    "bin-06": 63.0,
+}
 
-def _seed_entry(fill_pct: float) -> dict:
+SEED_EMPTIED_HOURS_AGO: dict[str, float] = {
+    "bin-01": 12.0,
+    "bin-02": 18.0,
+    "bin-03": 36.0,
+    "bin-04": 48.0,
+    "bin-05": 6.0,
+    "bin-06": 24.0,
+}
+
+def _fill_to_distance(fill_pct: float) -> float:
     empty_dist = 60.0
     full_dist = 10.0
-    distance = empty_dist - (fill_pct / 100.0) * (empty_dist - full_dist)
-    return {
-        "distance_cm": round(distance, 1),
-        "fill_percent": fill_pct,
-        "ts": time.time(),
-    }
+    return round(empty_dist - (fill_pct / 100.0) * (empty_dist - full_dist), 1)
 
-telemetry_store: dict[str, dict] = {
-    "bin-01": _seed_entry(15.0),
-    "bin-02": _seed_entry(42.0),
-    "bin-03": _seed_entry(78.0),
-    "bin-04": _seed_entry(91.0),
-    "bin-05": _seed_entry(5.0),
-    "bin-06": _seed_entry(63.0),
-}
+def seed_bins():
+    """Upsert seed bins using $setOnInsert so live data is never overwritten."""
+    now = time.time()
+    for bin_id, info in BIN_REGISTRY.items():
+        fill = SEED_FILLS[bin_id]
+        hours_ago = SEED_EMPTIED_HOURS_AGO[bin_id]
+        bins_col.update_one(
+            {"bin_id": bin_id},
+            {"$setOnInsert": {
+                "name": info["name"],
+                "location": {"lat": info["lat"], "lng": info["lng"]},
+                "fill_percent": fill,
+                "distance_cm": _fill_to_distance(fill),
+                "last_seen_at": now,
+                "last_emptied_at": now - hours_ago * 3600,
+            }},
+            upsert=True,
+        )
+    # Create indexes idempotently
+    bins_col.create_index("bin_id", unique=True)
+    telemetry_col.create_index([("bin_id", 1), ("ts", 1)])
 
 # ----------------------------
 # HELPERS
 # ----------------------------
 
-def build_bin_info(bin_id: str) -> BinInfo:
-    reg = BIN_REGISTRY[bin_id]
-    tel = telemetry_store.get(bin_id, {"distance_cm": 0.0, "fill_percent": 0.0, "ts": 0.0})
-    return BinInfo(
-        bin_id=bin_id,
-        name=reg["name"],
-        lat=reg["lat"],
-        lng=reg["lng"],
-        distance_cm=tel["distance_cm"],
-        fill_percent=tel["fill_percent"],
-        ts=tel["ts"],
+def doc_to_bin_out(doc: dict) -> BinOut:
+    loc = doc.get("location", {})
+    return BinOut(
+        bin_id=doc["bin_id"],
+        name=doc.get("name", "Unknown"),
+        lat=loc.get("lat", 0.0),
+        lng=loc.get("lng", 0.0),
+        distance_cm=doc.get("distance_cm", 0.0),
+        fill_percent=doc.get("fill_percent", 0.0),
+        ts=doc.get("last_seen_at", 0.0),
+        last_emptied_at=doc.get("last_emptied_at"),
     )
+
+def haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 # ----------------------------
 # APP
@@ -89,28 +156,159 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def on_startup():
+    seed_bins()
+
 # ----------------------------
 # ENDPOINTS
 # ----------------------------
 
 @app.post("/telemetry")
 def receive_telemetry(data: TelemetryIn):
-    telemetry_store[data.bin_id] = {
+    bins_col.update_one(
+        {"bin_id": data.bin_id},
+        {"$set": {
+            "fill_percent": data.fill_percent,
+            "distance_cm": data.distance_cm,
+            "last_seen_at": data.ts,
+        }},
+        upsert=True,
+    )
+    telemetry_col.insert_one({
+        "bin_id": data.bin_id,
         "distance_cm": data.distance_cm,
         "fill_percent": data.fill_percent,
         "ts": data.ts,
-    }
+    })
     return {"status": "ok", "bin_id": data.bin_id}
 
-@app.get("/bins", response_model=list[BinInfo])
+@app.get("/bins", response_model=list[BinOut])
 def get_bins():
-    return [build_bin_info(bid) for bid in BIN_REGISTRY]
+    docs = bins_col.find()
+    return [doc_to_bin_out(d) for d in docs]
 
-@app.get("/bins/{bin_id}", response_model=BinInfo)
+@app.get("/bins/{bin_id}", response_model=BinOut)
 def get_bin(bin_id: str):
-    if bin_id not in BIN_REGISTRY:
+    doc = bins_col.find_one({"bin_id": bin_id})
+    if not doc:
         raise HTTPException(status_code=404, detail=f"Bin '{bin_id}' not found")
-    return build_bin_info(bin_id)
+    return doc_to_bin_out(doc)
+
+@app.post("/bins/{bin_id}/emptied", response_model=BinOut)
+def mark_emptied(bin_id: str):
+    now = time.time()
+    doc = bins_col.find_one_and_update(
+        {"bin_id": bin_id},
+        {"$set": {"last_emptied_at": now, "fill_percent": 0.0, "distance_cm": _fill_to_distance(0.0)}},
+        return_document=True,
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail=f"Bin '{bin_id}' not found")
+    return doc_to_bin_out(doc)
+
+@app.get("/heatmap", response_model=list[HeatmapPoint])
+def get_heatmap(minutes: int = Query(default=120, ge=1)):
+    cutoff = time.time() - minutes * 60
+    pipeline = [
+        {"$match": {"ts": {"$gte": cutoff}}},
+        {"$group": {"_id": "$bin_id", "avg_fill": {"$avg": "$fill_percent"}}},
+    ]
+    agg_results = {r["_id"]: r["avg_fill"] for r in telemetry_col.aggregate(pipeline)}
+
+    points = []
+    for doc in bins_col.find():
+        bin_id = doc["bin_id"]
+        fill = agg_results.get(bin_id, doc.get("fill_percent", 0.0))
+        loc = doc.get("location", {})
+        points.append(HeatmapPoint(
+            lat=loc.get("lat", 0.0),
+            lng=loc.get("lng", 0.0),
+            weight=round(fill / 100.0, 3),
+        ))
+    return points
+
+@app.get("/route", response_model=RouteOut)
+def get_route(
+    start: str = Query(..., description="Starting bin_id"),
+    end: str = Query(..., description="Ending bin_id"),
+):
+    all_docs = {d["bin_id"]: d for d in bins_col.find()}
+    if start not in all_docs:
+        raise HTTPException(status_code=404, detail=f"Start bin '{start}' not found")
+    if end not in all_docs:
+        raise HTTPException(status_code=404, detail=f"End bin '{end}' not found")
+
+    now = time.time()
+
+    def compute_priority(doc: dict) -> float:
+        fill = doc.get("fill_percent", 0.0)
+        emptied_at = doc.get("last_emptied_at")
+        if emptied_at:
+            hours_since = (now - emptied_at) / 3600.0
+        else:
+            hours_since = 48.0
+        return 0.7 * (fill / 100.0) + 0.3 * min(hours_since / 24.0, 1.0)
+
+    # Candidates: bins with fill >= 10%, excluding start and end
+    candidates = {}
+    for bid, doc in all_docs.items():
+        if bid in (start, end):
+            continue
+        if doc.get("fill_percent", 0.0) >= 10.0:
+            candidates[bid] = doc
+
+    # Greedy route building
+    route_ids = [start]
+    current = all_docs[start]
+    visited = {start}
+
+    for _ in range(min(10, len(candidates))):
+        best_bid = None
+        best_score = -float("inf")
+        cur_loc = current.get("location", {})
+        cur_lat = cur_loc.get("lat", 0.0)
+        cur_lng = cur_loc.get("lng", 0.0)
+
+        for bid, doc in candidates.items():
+            if bid in visited:
+                continue
+            loc = doc.get("location", {})
+            dist_km = haversine_km(cur_lat, cur_lng, loc.get("lat", 0.0), loc.get("lng", 0.0))
+            score = compute_priority(doc) - 0.1 * dist_km
+            if score > best_score:
+                best_score = score
+                best_bid = bid
+
+        if best_bid is None:
+            break
+        visited.add(best_bid)
+        route_ids.append(best_bid)
+        current = candidates[best_bid]
+
+    if end not in visited:
+        route_ids.append(end)
+
+    # Build response
+    stops = []
+    polyline = []
+    for order, bid in enumerate(route_ids):
+        doc = all_docs[bid]
+        loc = doc.get("location", {})
+        lat = loc.get("lat", 0.0)
+        lng = loc.get("lng", 0.0)
+        stops.append(RouteStop(
+            bin_id=bid,
+            name=doc.get("name", "Unknown"),
+            lat=lat,
+            lng=lng,
+            fill_percent=doc.get("fill_percent", 0.0),
+            priority=round(compute_priority(doc), 3),
+            order=order,
+        ))
+        polyline.append([lat, lng])
+
+    return RouteOut(stops=stops, polyline=polyline)
 
 # ----------------------------
 # RUN
