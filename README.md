@@ -97,8 +97,8 @@ The dashboard will be available at `http://localhost:5173`.
 
 | HC-SR04 Pin | RPi GPIO         |
 |-------------|------------------|
-| Trig        | GPIO 23 (pin 16) |
-| Echo        | GPIO 24 (pin 18) |
+| Trig        | GPIO 25          |
+| Echo        | GPIO 24          |
 | VCC         | 5V               |
 | GND         | GND              |
 
