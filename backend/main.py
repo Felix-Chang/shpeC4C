@@ -2,8 +2,8 @@ import certifi
 import math
 import os
 import time
+import random
 from contextlib import asynccontextmanager
-
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -91,6 +91,56 @@ SEED_EMPTIED_HOURS_AGO: dict[str, float] = {
     "bin-05": 6.0,
     "bin-06": 24.0,
 }
+
+
+# ... (Your existing BIN_REGISTRY, SEED_FILLS, SEED_EMPTIED_HOURS_AGO from above) ...
+
+def generate_campus_bins(existing_registry, count_to_add=30):
+    new_registry = existing_registry.copy()
+    new_fills = SEED_FILLS.copy()
+    new_emptied = SEED_EMPTIED_HOURS_AGO.copy()
+    
+    # Get list of existing landmarks to cluster around
+    landmarks = list(existing_registry.values())
+    last_bin_id = len(existing_registry)
+
+    for i in range(1, count_to_add + 1):
+        # Pick a random landmark to place this new bin near (e.g., near Marston)
+        parent = random.choice(landmarks)
+        
+        # Create a new ID
+        new_id = f"bin-{last_bin_id + i:02d}"
+        
+        # Add slight random jitter to lat/lng (approx 10-50 meters)
+        # 0.0001 deg is roughly 11 meters
+        jitter_lat = random.uniform(-0.0005, 0.0005) 
+        jitter_lng = random.uniform(-0.0005, 0.0005)
+        
+        # Generate varied names (e.g., "Marston Library - Zone B")
+        suffixes = ["North Entrance", "South Exit", "Bus Stop", "2nd Floor", "Parking Lot", "Walkway"]
+        new_name = f"{parent['name']} - {random.choice(suffixes)}"
+
+        # Add to registry
+        new_registry[new_id] = {
+            "name": new_name,
+            "lat": round(parent["lat"] + jitter_lat, 5),
+            "lng": round(parent["lng"] + jitter_lng, 5)
+        }
+
+        # Generate random simulation data for the new bin
+        new_fills[new_id] = round(random.uniform(0.0, 100.0), 1)
+        new_emptied[new_id] = round(random.uniform(1.0, 72.0), 1)
+
+    return new_registry, new_fills, new_emptied
+
+# --- EXECUTION ---
+full_registry, full_fills, full_emptied = generate_campus_bins(BIN_REGISTRY, 30)
+
+# Print a sample to verify
+print(f"Total Bins: {len(full_registry)}")
+print("Sample of new bins:")
+for k, v in list(full_registry.items())[-5:]: # Show last 5
+    print(f"{k}: {v['name']} | Fill: {full_fills[k]}% | Last Empty: {full_emptied[k]}h ago")
 
 # Route optimization: penalty points per kilometer of travel
 # Higher values favor geographic proximity, lower values favor fill priority
