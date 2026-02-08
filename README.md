@@ -120,7 +120,7 @@ pip install -r requirements.txt
 
 ```bash
 # sensor/.env
-BACKEND_URL=https://shpec4c-production.up.railway.app
+BACKEND_URL=http://localhost:8000
 BIN_ID=bin-01
 ```
 
