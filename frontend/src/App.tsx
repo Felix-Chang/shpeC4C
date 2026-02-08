@@ -10,6 +10,7 @@ import {
 } from "./utils";
 import BinMarker from "./BinMarker";
 import RoutePolyline from "./RoutePolyline";
+import logo from "./assets/logo.png";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || "";
 const POLL_INTERVAL = 10_000;
@@ -104,10 +105,10 @@ function App() {
             {/* Placeholder for your green transparent logo */}
             {/* Replace '/logo.png' with the actual path to your logo file */}
             <img
-              src="/logo.png"
+              src={logo}
               alt="Logo"
-              width="32"
-              height="32"
+              width="64"
+              height="64"
               style={{
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))'
