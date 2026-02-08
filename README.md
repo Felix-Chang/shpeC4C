@@ -23,6 +23,8 @@ BinSight consists of three components:
 shpeC4C/
 ├── sensor/           Raspberry Pi sensor script
 │   ├── main.py
+│   ├── admin.py      Admin CLI for managing bins
+│   ├── .env          Configuration file (create this!)
 │   └── requirements.txt
 ├── backend/          FastAPI server
 │   ├── main.py
@@ -109,19 +111,50 @@ The Echo pin outputs 5V. Use a voltage divider (1k / 2k resistors) to bring it d
 ```bash
 cd sensor
 pip install -r requirements.txt
-python main.py
 ```
 
 ### Configuration
 
-Set these environment variables to override defaults:
+**Create a `.env` file** in the `sensor/` folder:
+
+```bash
+# sensor/.env
+BACKEND_URL=https://shpec4c-production.up.railway.app
+BIN_ID=bin-01
+```
+
+**Configuration Options:**
 
 | Variable      | Default                                                    | Description              |
 |---------------|------------------------------------------------------------|--------------------------|
-| `BACKEND_URL` | `https://shpec4c-production.up.railway.app/telemetry`      | Telemetry POST endpoint  |
+| `BACKEND_URL` | `https://shpec4c-production.up.railway.app`                | Backend API base URL     |
 | `BIN_ID`      | `bin-01`                                                   | Identifier for this bin  |
 
+> **Note:** For `main.py`, the URL should NOT include `/telemetry` - the script appends it automatically. For local testing, use `BACKEND_URL=http://localhost:8000`.
+
+**Start the sensor:**
+
+```bash
+python main.py
+```
+
 The sensor takes 7 readings per cycle using a median filter, then sends the smoothed distance and calculated fill percentage to the backend every second.
+
+### Admin Tool
+
+The sensor folder includes an admin CLI tool for managing bins remotely:
+
+```bash
+cd sensor
+python admin.py
+```
+
+Features:
+- **List bins** - View all bins with fill levels and status
+- **Add bin** - Register new bins with metadata (name, location)
+- **Delete bin** - Remove bins from the system
+
+The admin tool uses the same `.env` configuration as the sensor script.
 
 ### Calibration
 

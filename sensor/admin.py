@@ -8,11 +8,15 @@ import requests
 import sys
 import time
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Backend URL - use Railway production or local
 BACKEND_URL = os.getenv(
     "BACKEND_URL",
-    "https://shpec4c-production.up.railway.app"  # Update with your Railway URL
+    "https://shpec4c-production.up.railway.app"  # Fallback if not in .env
 )
 
 def calculate_distance(fill_pct: float) -> float:
