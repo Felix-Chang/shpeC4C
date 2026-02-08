@@ -122,7 +122,7 @@ def main():
                 if SEND_HTTP:
                     send_to_backend(d, fill)
 
-            time.sleep(1.0)
+            time.sleep(30.0)  # Update every 5 minutes
     finally:
         GPIO.cleanup()
 
