@@ -127,7 +127,7 @@ function App() {
       </nav>
 
       {/* ---- Content Panel ---- */}
-      <div className="panel">
+      <div className={`panel ${activeNav === "route" ? "panel-route-mode" : ""}`}>
         <div className="panel-header">
           <h1 className="panel-title">BinSight</h1>
           <p className="panel-subtitle">Smart Collection Dashboard</p>
@@ -155,7 +155,8 @@ function App() {
 
         {/* Route Planner — shown when route nav is active */}
         {activeNav === "route" && (
-          <div className="route-planner fade-in">
+          <div className="route-planner-container fade-in">
+            <div className="route-planner">
             <div className="route-planner-title">Route Planner</div>
             <div className="route-endpoints">
               <div className="route-endpoint">
@@ -215,16 +216,16 @@ function App() {
                 </ul>
               </div>
             )}
+            </div>
           </div>
         )}
 
-        {/* Bin Cards */}
-        <div className="panel-section-title">
-          {activeNav === "route" && route ? "Route Bins" : "Active Bins"}
-        </div>
-
-        <div className="bin-list">
-          {sortedBins.map((bin, i) => {
+        {/* Bin Cards - hidden when on route nav */}
+        {activeNav !== "route" && (
+          <>
+            <div className="panel-section-title">Active Bins</div>
+            <div className="bin-list">
+              {sortedBins.map((bin, i) => {
             const severity = fillSeverity(bin.fill_percent);
             const isRouteStop = routeOrderMap.has(bin.bin_id);
             const routeNum = routeOrderMap.get(bin.bin_id);
@@ -267,7 +268,9 @@ function App() {
               </div>
             );
           })}
-        </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* ---- Map ---- */}

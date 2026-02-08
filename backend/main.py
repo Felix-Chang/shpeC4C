@@ -67,9 +67,9 @@ class RouteOut(BaseModel):
 BIN_REGISTRY: dict[str, dict] = {
     "bin-01": {"name": "Marston Library",          "lat": 29.6481, "lng": -82.3436},
     "bin-02": {"name": "Reitz Union",              "lat": 29.6462, "lng": -82.3479},
-    "bin-03": {"name": "Plaza of the Americas",    "lat": 29.6510, "lng": -82.3418},
+    "bin-03": {"name": "Plaza of the Americas",    "lat": 29.6505, "lng": -82.3427},
     "bin-04": {"name": "Ben Hill Griffin Stadium",  "lat": 29.6500, "lng": -82.3486},
-    "bin-05": {"name": "Turlington Hall",          "lat": 29.6494, "lng": -82.3428},
+    "bin-05": {"name": "Turlington Hall",          "lat": 29.6489, "lng": -82.3443},
     "bin-06": {"name": "Hub / CSE Building",       "lat": 29.6483, "lng": -82.3440},
 }
 

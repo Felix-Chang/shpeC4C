@@ -127,11 +127,22 @@
 }
 
 /* --- Route Planner --- */
+.route-planner-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .route-planner {
+  flex: 1;
   padding: 16px 24px;
   border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
   background: var(--bg-sidebar);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .route-planner-title {
@@ -261,13 +272,14 @@
 
 /* --- Route info --- */
 .route-info {
-  margin-top: 12px;
   padding: 12px;
   background: var(--accent-light);
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
   color: var(--accent-hover);
   font-weight: 500;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .route-info-header {
@@ -479,14 +491,16 @@
 
 /* --- Custom map marker --- */
 .map-marker {
-  position: relative;
-  transform: translate(-50%, -100%);
+  position: absolute;
   cursor: pointer;
   transition: transform 0.2s ease;
+  /* Position marker so the pin tip is at the coordinate */
+  left: -18px;  /* Half of pin width (36px / 2) */
+  top: -44px;   /* Full pin height to position tip at coordinate */
 }
 
 .map-marker:hover {
-  transform: translate(-50%, -100%) scale(1.1);
+  transform: scale(1.1);
   z-index: 100 !important;
 }
 
