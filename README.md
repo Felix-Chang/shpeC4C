@@ -128,7 +128,7 @@ BIN_ID=bin-01
 
 | Variable      | Default                                     | Description             |
 | ------------- | ------------------------------------------- | ----------------------- |
-| `BACKEND_URL` | `https://shpec4c-production.up.railway.app` | Backend API base URL    |
+| `BACKEND_URL` | `https://yourApp-production.up.railway.app` | Backend API base URL    |
 | `BIN_ID`      | `bin-01`                                    | Identifier for this bin |
 
 > **Note:** For `main.py`, the URL should NOT include `/telemetry` - the script appends it automatically. For local testing, use `BACKEND_URL=http://localhost:8000`.
