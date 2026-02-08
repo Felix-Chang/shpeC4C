@@ -7,7 +7,7 @@ import requests
 # ----------------------------
 # CONFIG
 # ----------------------------
-TRIG_PIN = 23   # BCM GPIO23 (physical pin 16)
+TRIG_PIN = 25   # BCM GPIO23 (physical pin 16)
 ECHO_PIN = 24   # BCM GPIO24 (physical pin 18) <-- use a voltage divider/level shifter if echo is 5V
 
 # Trash bin calibration (in centimeters)
