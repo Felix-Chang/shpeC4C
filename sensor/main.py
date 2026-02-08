@@ -26,6 +26,8 @@ SAMPLE_DELAY = 0.08  # seconds between samples
 SEND_HTTP = True
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://shpec4c-production.up.railway.app/telemetry")
 BIN_ID = os.environ.get("BIN_ID", "bin-01")
+POST_INTERVAL = float(os.environ.get("POST_INTERVAL", "30"))  # seconds between backend posts
+READ_INTERVAL = 5.0  # seconds between sensor readings (keeps sensor responsive)
 
 # HC-SR04-ish constants
 SPEED_OF_SOUND_CM_S = 34300.0  # cm/s at ~20°C
@@ -113,20 +115,27 @@ def send_to_backend(d_cm, fill_pct):
         print(f"Send failed: {e}")
 
 def main():
-    print("Starting ultrasonic monitoring (RPi.GPIO)...")
+    print(f"Starting ultrasonic monitoring (RPi.GPIO)...")
+    print(f"Reading every {READ_INTERVAL}s, posting every {POST_INTERVAL}s")
+    last_post_time = 0  # Force initial post
+
     try:
         while True:
             d = smoothed_distance_cm()
             fill = fill_percent_from_distance(d)
+            current_time = time.time()
 
             if d is None or fill is None:
                 print("No valid reading")
             else:
                 print(f"Distance: {d:6.1f} cm | Fill: {fill:5.1f}%")
-                if SEND_HTTP:
-                    send_to_backend(d, fill)
 
-            time.sleep(1.0)
+                # Only post if enough time has elapsed since last post
+                if SEND_HTTP and (current_time - last_post_time >= POST_INTERVAL):
+                    send_to_backend(d, fill)
+                    last_post_time = current_time
+
+            time.sleep(READ_INTERVAL)
     finally:
         GPIO.cleanup()
 
