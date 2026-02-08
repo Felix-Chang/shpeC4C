@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { APIProvider, Map as GoogleMap, Polyline } from "@vis.gl/react-google-maps";
+import { APIProvider, Map as GoogleMap } from "@vis.gl/react-google-maps";
 import "./App.css";
 import { fetchBins, fetchRoute } from "./api";
 import type { BinInfo, RouteOut } from "./types";
@@ -9,6 +9,7 @@ import {
   formatTimestamp,
 } from "./utils";
 import BinMarker from "./BinMarker";
+import RoutePolyline from "./RoutePolyline";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || "";
 const POLL_INTERVAL = 10_000;
@@ -303,14 +304,11 @@ function App() {
 
               {/* Add polyline visualization */}
               {route && route.polyline.length > 1 && (
-                <Polyline
+                <RoutePolyline
                   path={route.polyline.map(([lat, lng]) => ({ lat, lng }))}
-                  options={{
-                    strokeColor: "#2d6a4f",
-                    strokeOpacity: 0.8,
-                    strokeWeight: 3,
-                    geodesic: true,
-                  }}
+                  strokeColor="#2d6a4f"
+                  strokeOpacity={0.8}
+                  strokeWeight={3}
                 />
               )}
             </GoogleMap>
