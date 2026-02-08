@@ -101,12 +101,18 @@ function App() {
       <nav className="icon-rail">
         <div className="rail-top">
           <div className="rail-logo">
-            <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
-              <rect width="28" height="28" rx="8" fill="#2d6a4f" />
-              <path d="M8 10h12l-1.5 11a1 1 0 01-1 .9h-7a1 1 0 01-1-.9L8 10z" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M7 10h14" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-              <path d="M11 7h6" stroke="white" strokeWidth="1.6" strokeLinecap="round" />
-            </svg>
+            {/* Placeholder for your green transparent logo */}
+            {/* Replace '/logo.png' with the actual path to your logo file */}
+            <img
+              src="/logo.png"
+              alt="Logo"
+              width="32"
+              height="32"
+              style={{
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1))'
+              }}
+            />
           </div>
 
           <button
