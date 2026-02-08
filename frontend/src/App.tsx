@@ -298,6 +298,8 @@ function App() {
               mapId="wastewise-map"
               gestureHandling="greedy"
               disableDefaultUI={false}
+              fullscreenControl={false}
+              mapTypeControl={false}
               style={{ width: "100%", height: "100%" }}
             >
               {bins.map((bin) => (
