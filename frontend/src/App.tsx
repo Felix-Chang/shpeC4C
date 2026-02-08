@@ -10,6 +10,7 @@ import {
 } from "./utils";
 import BinMarker from "./BinMarker";
 import RoutePolyline from "./RoutePolyline";
+import LandingPage from "./components/LandingPage";
 import logo from "./assets/logo.png";
 
 const MAPS_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY || "";
@@ -17,6 +18,9 @@ const POLL_INTERVAL = 10_000;
 const DEFAULT_CENTER = { lat: 29.6462, lng: -82.3479 };
 
 function App() {
+  const [showLanding, setShowLanding] = useState(() => {
+    return !localStorage.getItem('binsight-visited');
+  });
   const [bins, setBins] = useState<BinInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedBin, setSelectedBin] = useState<string | null>(null);
@@ -25,6 +29,11 @@ function App() {
   const [route, setRoute] = useState<RouteOut | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [activeNav, setActiveNav] = useState<"bins" | "route">("bins");
+
+  const handleEnterDashboard = useCallback(() => {
+    localStorage.setItem('binsight-visited', 'true');
+    setShowLanding(false);
+  }, []);
 
   const loadBins = useCallback(async () => {
     try {
@@ -91,6 +100,10 @@ function App() {
   );
 
   const selected = bins.find((b) => b.bin_id === selectedBin);
+
+  if (showLanding) {
+    return <LandingPage onGetStarted={handleEnterDashboard} />;
+  }
 
   if (loading) {
     return <div className="loading">Loading bins...</div>;
