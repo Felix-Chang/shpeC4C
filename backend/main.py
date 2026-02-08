@@ -33,6 +33,12 @@ class TelemetryIn(BaseModel):
     fill_percent: float
     ts: float
 
+class BinRegister(BaseModel):
+    bin_id: str
+    name: str
+    lat: float
+    lng: float
+
 class BinOut(BaseModel):
     bin_id: str
     name: str
@@ -215,6 +221,55 @@ def mark_emptied(bin_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail=f"Bin '{bin_id}' not found")
     return doc_to_bin_out(doc)
+
+@app.post("/bins/register")
+def register_bin(data: BinRegister):
+    """
+    Register bin metadata (name, location).
+    Upserts to handle bins that were auto-created by telemetry.
+    """
+    now = time.time()
+
+    # Check if bin exists
+    existing = bins_col.find_one({"bin_id": data.bin_id})
+
+    if existing:
+        # Update metadata only, preserve telemetry data
+        bins_col.update_one(
+            {"bin_id": data.bin_id},
+            {"$set": {
+                "name": data.name,
+                "location": {"lat": data.lat, "lng": data.lng},
+            }}
+        )
+        return {"status": "updated", "bin_id": data.bin_id}
+    else:
+        # Create new bin with metadata and zero fill
+        doc = {
+            "bin_id": data.bin_id,
+            "name": data.name,
+            "location": {"lat": data.lat, "lng": data.lng},
+            "fill_percent": 0.0,
+            "distance_cm": 60.0,  # Empty bin
+            "last_seen_at": now,
+            "last_emptied_at": now,
+        }
+        bins_col.insert_one(doc)
+        return {"status": "created", "bin_id": data.bin_id}
+
+@app.delete("/bins/{bin_id}")
+def delete_bin(bin_id: str):
+    """
+    Delete a bin from the registry.
+    Telemetry history is preserved for audit trail.
+    """
+    result = bins_col.delete_one({"bin_id": bin_id})
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Bin '{bin_id}' not found"
+        )
+    return {"status": "deleted", "bin_id": bin_id}
 
 @app.get("/heatmap", response_model=list[HeatmapPoint])
 def get_heatmap(minutes: int = Query(default=120, ge=1)):
