@@ -1,4 +1,4 @@
-import { FC } from "react";
+import type { FC } from "react";
 import "./LandingPage.css";
 import logo from "../assets/logo.png";
 
