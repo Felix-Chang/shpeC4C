@@ -15,6 +15,12 @@ BACKEND_URL = os.getenv(
     "https://shpec4c-production.up.railway.app"  # Update with your Railway URL
 )
 
+def calculate_distance(fill_pct: float) -> float:
+    """Calculate distance_cm from fill percentage (mirrors backend logic)."""
+    empty_dist = 60.0
+    full_dist = 10.0
+    return round(empty_dist - (fill_pct / 100.0) * (empty_dist - full_dist), 1)
+
 def send_to_backend(endpoint: str, method: str = "GET", data: dict = None) -> dict:
     """Send HTTP request to backend."""
     url = f"{BACKEND_URL}{endpoint}"
@@ -82,8 +88,19 @@ def add_bin():
     try:
         lat = float(input("Latitude (e.g., 29.6475): ").strip())
         lng = float(input("Longitude (e.g., -82.3420): ").strip())
+
+        # NEW: Optional fill percentage
+        fill_input = input("Initial fill % (0-100, press Enter for 0): ").strip()
+        if fill_input:
+            fill_percent = float(fill_input)
+            if not 0 <= fill_percent <= 100:
+                print("❌ Fill percentage must be between 0 and 100")
+                return
+        else:
+            fill_percent = 0.0
+
     except ValueError:
-        print("❌ Invalid coordinates")
+        print("❌ Invalid input")
         return
 
     # Register bin metadata
@@ -92,7 +109,8 @@ def add_bin():
         "bin_id": bin_id,
         "name": name,
         "lat": lat,
-        "lng": lng
+        "lng": lng,
+        "fill_percent": fill_percent
     }
     result = send_to_backend("/bins/register", method="POST", data=data)
 
@@ -103,14 +121,15 @@ def add_bin():
 
     # Send initial telemetry
     print("\n📡 Initializing sensor data...")
+    distance = calculate_distance(fill_percent)
     telemetry = {
         "bin_id": bin_id,
-        "distance_cm": 60.0,  # Empty bin
-        "fill_percent": 0.0,
+        "distance_cm": distance,
+        "fill_percent": fill_percent,
         "ts": time.time()
     }
     send_to_backend("/telemetry", method="POST", data=telemetry)
-    print(f"✅ Success: Telemetry sent for {bin_id}")
+    print(f"✅ Success: Telemetry sent ({fill_percent}% fill, {distance}cm distance)")
 
 def delete_bin():
     """Delete a bin from the system."""

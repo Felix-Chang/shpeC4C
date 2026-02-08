@@ -38,6 +38,7 @@ class BinRegister(BaseModel):
     name: str
     lat: float
     lng: float
+    fill_percent: float = 0.0
 
 class BinOut(BaseModel):
     bin_id: str
@@ -244,13 +245,16 @@ def register_bin(data: BinRegister):
         )
         return {"status": "updated", "bin_id": data.bin_id}
     else:
-        # Create new bin with metadata and zero fill
+        # Create new bin with metadata and specified fill
+        fill_pct = data.fill_percent
+        distance = _fill_to_distance(fill_pct)
+
         doc = {
             "bin_id": data.bin_id,
             "name": data.name,
             "location": {"lat": data.lat, "lng": data.lng},
-            "fill_percent": 0.0,
-            "distance_cm": 60.0,  # Empty bin
+            "fill_percent": fill_pct,
+            "distance_cm": distance,
             "last_seen_at": now,
             "last_emptied_at": now,
         }
